@@ -1,0 +1,101 @@
+<div style="text-align: center;" id="titles">
+<h1 style="color: blue;">{{title}}</h1>
+<p >Let's test a transaction</p>
+</div>
+
+
+<div calss="" role="alert" id="checkout-message"></div>
+
+<div id="dropin-wrapper">
+  
+  <label for="amount">Amount :</label>
+  <input type="tel" id="amounts" name="amount"  min="1" value="10" required>
+    <div id="dropin-container"></div>
+  <button id="submit-button">Submit payment</button>
+  </form>
+
+</div>
+
+<div id="containerRefund" style="margin: 20px;">
+
+  <form id="forms" action="/refund" method="POST">
+  <label for="refundId">Add the Transaction_id for a refund:</label>
+<input type="text" name='refundId' placeholder="Transaction_id " required>
+   
+<button type="submit" class=" btn btn-danger">Refund</button>
+</form>
+
+
+</div>
+
+
+<script>
+  $('#refund-button').hide();
+  var button = document.querySelector('#submit-button');
+  var amounts= document.getElementById("amounts").defaultValue = "10.00";
+   //var amounts = document.getElementById('amounts').value;
+    // var amounts = '27.00';
+  braintree.dropin.create({
+    // Insert your tokenization key here
+    authorization: 'sandbox_9q23wks3_b9tnmy8r5fhs9byw',
+    container: '#dropin-container',
+    paypal: {
+    flow: 'checkout',
+    amount:amounts,
+    currency: 'EUR'
+  }
+    
+  }, function (createErr, instance) {
+    button.addEventListener('click', function () {
+      var amounts = document.getElementById('amounts').value;
+      instance.requestPaymentMethod(function (requestPaymentMethodErr, payload) {
+           
+        // When the user clicks on the 'Submit payment' button this code will send the
+        // encrypted payment information in a variable called a payment method nonce
+
+        $.ajax({
+          type: 'POST',
+          url:'/checkout',
+          data: {'paymentMethodNonce': payload.nonce,
+                  'amount':amounts},
+           
+        }).done(function(result) {
+            
+          // Tear down the Drop-in UI
+          instance.teardown(function (teardownErr) {
+            if (teardownErr) {
+              console.error('Could not tear down Drop-in UI!');
+            } else {
+              console.info('Drop-in UI has been torn down!');
+              // Remove the 'Submit payment' button
+              $('#submit-button').remove();
+            }
+          });
+
+          if (result.success==true) {
+            $('#titles').remove();
+            $('#dropin-wrapper').hide();
+             $('#forms').hide();
+             var merchant = result.transaction.merchantAccountId;
+             var amount = result.transaction.amount;
+      
+            $('#checkout-message').html('<h1>Success</h1><p>Your transaction id: '+result.transaction.id+' </p>Merchant: '+merchant+'<p>Amount: '+amount+' </p><p><a href="/"> Test amother transaction</a></p>').addClass("alert alert-success");;
+   
+                
+          $('#titles').remove();
+              $('#amounts').remove();
+          } else if(result.success==false){
+            $('#titles').remove();
+             $('#dropin-wrapper').hide();
+             $('#forms').hide();
+              console.log(result.transaction.id);
+            $('#checkout-message').html('<h1>Transaction Failed</h1><p>Your test transaction has a status of '+result.transaction.status+'<a href="/" class="alert-link"> Test amother transaction</a></p>').addClass("alert alert-danger");;
+          }
+          else{
+            $('#checkout-message').html('<h1>Transaction Failed</h1><p>Check your consolt </p>');
+          }
+        });
+      });
+    });
+  });
+</script>
